@@ -47,7 +47,7 @@ sudo apt install zenity xrandr xdotool wmctrl python3
 ## Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/linux-wallpaper-engine-gnome-xorg
+git clone https://github.com/berelels/linux-wallpaper-engine-gnome-xorg
 cd linux-wallpaper-engine-gnome
 chmod +x install.sh
 ./install.sh
