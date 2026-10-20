@@ -14,13 +14,29 @@ Based on [Gabriel Dias’s GNOME/X11 launcher](https://github.com/berelels/linux
 
 ### Browse and download community wallpapers
 
-Use [jagrat7/linux-wallpaper-engine](https://github.com/jagrat7/linux-wallpaper-engine) to browse the Steam Workshop and download wallpapers. Then open **Change Animated Wallpaper** to select your monitors and apply a downloaded item. The browser’s own Apply button is not changed by this fork.
+Use [jagrat7/linux-wallpaper-engine](https://github.com/jagrat7/linux-wallpaper-engine) to browse the Steam Workshop and download wallpapers. Then open **Change Animated Wallpaper** to select your monitors and apply a downloaded item. The optional `gnome-backend.py` adapter also enables the browser’s own Apply/Stop buttons on GNOME X11; see below.
 
 For Flatpak Steam, select `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` in the setup wizard. Select your installed backend executable or its launcher wrapper separately. This repository does not bundle the backend, Steam, proprietary assets, or Workshop downloads.
 
 ### Verification
 
-The borderless-window workaround was visibly confirmed by the user on one monitor on Zorin OS 18.1, GNOME 46, X11, using a downloaded video wallpaper. The launcher supports monitor selection, but both-monitor playback and login restoration have not yet been visually verified in this setup. Removing `above` was included in the successful test; we did not isolate whether it was strictly necessary.
+The user confirmed visible video playback on both monitors with normal applications above the wallpapers on Zorin OS 18.1 / GNOME 46 / X11. The Workshop browser reported 2/2 active with the adapter, and its Stop button removed both renderer processes and windows. Login restoration has not yet been tested by logging out.
+
+## Optional Workshop-browser Apply integration
+
+`gnome-backend.py` accepts the real backend executable followed by the normal backend arguments. It converts each `--screen-root MONITOR` into a separate borderless renderer, waits for its window by PID, marks it as a desktop window, and positions it on that monitor. Renderer children terminate when the adapter is stopped, including when the browser uses SIGKILL.
+
+Example (replace the executable and wallpaper paths):
+
+```bash
+python3 gnome-backend.py /path/to/real/linux-wallpaperengine \
+  --screen-root HDMI-0 --screen-root HDMI-1-2 \
+  --assets-dir /path/to/wallpaper_engine/assets --bg /path/to/workshop/item
+```
+
+To connect a browser that finds `linux-wallpaperengine` on PATH, use a wrapper with that name which executes this adapter and passes the absolute path to the **real** backend. Do not point it back to itself. The adapter needs Python 3, xrandr, xprop, and wmctrl in the browser's execution environment. A Flatpak runtime may lack these even when they exist on the host; this repository does not automatically bundle runtime dependencies or change Flatpak permissions.
+
+Both launch paths mark windows as `_NET_WM_WINDOW_TYPE_DESKTOP` before positioning them. On the tested GNOME desktop, full-monitor normal windows ignored moves to the other monitor until their type was changed.
 
 ## Why this exists
 
@@ -57,7 +73,7 @@ Follow the build instructions in that repository before proceeding.
 
 ### System packages
 ```bash
-sudo apt install zenity x11-xserver-utils xdotool wmctrl python3
+sudo apt install zenity x11-xserver-utils x11-utils xdotool wmctrl python3
 ```
 
 ---
@@ -112,7 +128,7 @@ On GNOME + X11, the `--screen-root` flag draws on the X11 root window. However, 
 ### The solution
 Instead of `--screen-root`, we use `--window` with explicit geometry in the format `XxYxWxH`. This creates a normal application window positioned and sized to exactly cover each monitor.
 
-After launch, `wmctrl` first removes `above` (the backend can start always on top), then pins each window with:
+After a player window appears, `xprop` marks it as a desktop window. `wmctrl` then removes `above` (the backend can start always on top), then pins each window with:
 ```
 below    → always behind all other windows
 sticky   → visible on all workspaces
