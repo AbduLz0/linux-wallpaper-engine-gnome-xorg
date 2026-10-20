@@ -14,13 +14,62 @@ Based on [Gabriel Dias’s GNOME/X11 launcher](https://github.com/berelels/linux
 
 ### Browse and download community wallpapers
 
-Use [jagrat7/linux-wallpaper-engine](https://github.com/jagrat7/linux-wallpaper-engine) to browse the Steam Workshop and download wallpapers. Then open **Change Animated Wallpaper** to select your monitors and apply a downloaded item. The optional `gnome-backend.py` adapter also enables the browser’s own Apply/Stop buttons on GNOME X11; see below.
+Use [jagrat7/linux-wallpaper-engine](https://github.com/jagrat7/linux-wallpaper-engine) for the full browser with thumbnails, Workshop downloads, and Apply/Stop controls. Install its native Linux package separately, then use the optional integration installer below. **Change Animated Wallpaper** remains available as the smaller monitor-and-wallpaper selection wizard.
 
 For Flatpak Steam, select `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` in the setup wizard. Select your installed backend executable or its launcher wrapper separately. This repository does not bundle the backend, Steam, proprietary assets, or Workshop downloads.
 
 ### Verification
 
 The user confirmed visible video playback on both monitors with normal applications above the wallpapers and desktop icons visible and clickable on Zorin OS 18.1 / GNOME 46 / X11. The Workshop browser reported 2/2 active with the adapter, and its Stop button removed both renderer processes and windows. Login restoration has not yet been tested by logging out.
+
+## Full browser, desktop shortcut, and overview fixes
+
+This fork adds session fixes tested on Zorin OS 18.1 / GNOME 46 / X11:
+
+- The full **Linux Wallpaper Engine** desktop shortcut opens the browser, rather than only the selection wizard.
+- A private backend wrapper connects the browser's Apply/Stop controls to `gnome-backend.py` on each selected monitor.
+- A still image of the selected wallpapers appears behind the Start/Activities overview. It updates after changing or reapplying a wallpaper and uses each monitor's actual rendered pixels, without application windows or desktop icons.
+- An event-driven window-order guard keeps desktop icons above wallpaper windows after opening and closing the overview. It only corrects misplaced wallpaper windows, avoiding a restacking loop.
+- Login restoration reads the browser's latest saved selections. The installer backs up and disables this project's older generated login entry to avoid two wallpaper owners.
+
+Install the [native full browser](https://github.com/jagrat7/linux-wallpaper-engine/releases) and the real [Almamu renderer](https://github.com/Almamu/linux-wallpaperengine) first. The browser, renderer, Steam assets, and wallpapers are separate dependencies; they are not bundled here. The installer does not modify system packages or the Electron sandbox.
+
+```bash
+sudo apt install python3-pil libx11-6 libxcomposite1 x11-utils x11-xserver-utils wmctrl coreutils
+python3 install-browser-integration.py \
+  --backend /path/to/real/linux-wallpaperengine \
+  --browser /usr/bin/linux-wallpaper-engine
+```
+
+Run the installer as your desktop user, without sudo. Existing `BINARY` and `BROWSER` path assignments in `~/.config/wallpaper-engine/config.sh` can supply the options. `BINARY` must identify the actual renderer executable, not the integration wrapper. Paths containing spaces are supported. Use `--no-desktop-shortcut` to create only the app-menu entry.
+
+Open **Linux Wallpaper Engine** from the desktop or app menu. Keep Steam running for Workshop operations. The helpers start with the browser and at login; locks prevent duplicate instances. The overview still normally updates a few seconds after a selection has finished rendering. Stopping animation leaves the last still image in place. Overview rendering itself stays static.
+
+The integration follows the full browser's `active-wallpapers.json` state. The legacy **Change Animated Wallpaper** wizard does not update that browser state. Use the full browser when you want automatic overview synchronization.
+
+If the Windows/Super key opens the Zorin menu and you want the Activities overview instead, choose that behavior in Zorin Appearance. On the tested Zorin version its setting is:
+
+```bash
+gsettings set org.gnome.shell.extensions.zorin-menu super-hotkey false
+```
+
+The installer leaves taskbar styling, monitor taskbars, and keyboard preferences under your control. It does not toggle GNOME extensions.
+
+### Files and removal
+
+The optional integration installs into `${XDG_DATA_HOME:-~/.local/share}/wallpaper-engine-gnome/` and creates user app-menu, optional desktop, and autostart entries. Paths and backup configuration remain in `${XDG_CONFIG_HOME:-~/.config}/wallpaper-engine/`. The full browser keeps its own settings in `${XDG_CONFIG_HOME:-~/.config}/Linux Wallpaper Engine/`.
+
+To disable it, close the full browser, stop wallpapers, and remove its three integration autostart entries (`wallpaper-overview-sync.desktop`, `wallpaper-icon-stacking.desktop`, and `wallpaper-browser-restore.desktop`) from `~/.config/autostart/`. Log out and back in to stop the session helpers. Remove the user `linux-wallpaper-engine.desktop` entry, desktop shortcut, and integration folder if no longer needed. Restore your preferred static background in Settings. If returning to the legacy launcher, restore `wallpaper-engine.desktop.before-browser-integration` to `wallpaper-engine.desktop`.
+
+### Verification
+
+```bash
+python3 -m unittest discover -v
+python3 -m py_compile *.py browser-bin/linux-wallpaperengine
+bash -n install.sh change-wallpaper.sh run-wallpaper.sh
+```
+
+Regression tests cover wrong-order-only icon correction, process identity and owner checks, compatibility-scan windows, duplicate events and helper shutdown, clean per-monitor capture/composition, selection and monitor changes, capture races, portable installation with spaces in paths, configuration parsing, and saved monitor restoration. Live checks confirmed overview stills following wallpaper changes on both monitors and desktop icons returning after repeated overview transitions. The packaged install is also tested in an isolated temporary home; reboot and other desktop environments are not covered by those checks.
 
 ## Optional Workshop-browser Apply integration
 
@@ -42,7 +91,7 @@ Both launch paths mark windows as `_NET_WM_WINDOW_TYPE_DESKTOP` before positioni
 
 The `linux-wallpaperengine` project can render Wallpaper Engine scenes on Linux, but on GNOME + X11 the standard `--screen-root` mode doesn't work. GNOME Shell renders its own background layer on top of the X11 root window, completely covering the wallpaper.
 
-This project solves that by running the engine in `--window` mode with explicit monitor geometry, then using `wmctrl` to pin those windows below all other windows with `below + sticky` flags — making them behave exactly like a real wallpaper.
+This project runs the engine in `--window` mode with explicit monitor geometry, assigns the desktop window type, and lowers it within that layer while keeping desktop icons above it.
 
 This approach, combined with a GUI for monitor selection and wallpaper properties, was developed and tested on **Zorin OS 17** (GNOME + X11) and is believed to be the first working solution for this specific combination.
 
@@ -81,7 +130,7 @@ sudo apt install zenity x11-xserver-utils x11-utils xdotool wmctrl python3
 ## Installation
 
 ```bash
-git clone https://github.com/AbduLz0/linux-wallpaper-engine-gnome-xorg
+git clone https://github.com/zadwen/linux-wallpaper-engine-gnome-xorg
 cd linux-wallpaper-engine-gnome-xorg
 chmod +x install.sh
 ./install.sh

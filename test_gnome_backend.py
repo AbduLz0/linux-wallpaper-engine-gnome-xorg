@@ -22,4 +22,5 @@ class PlacementTests(unittest.TestCase):
   with patch.object(bridge.sys,'argv',['bridge','/backend','--screen-root','missing']),patch.object(bridge,'monitors',return_value={}),patch.object(bridge.subprocess,'Popen') as spawn:
    with self.assertRaises(ValueError): bridge.main()
    spawn.assert_not_called()
-unittest.main()
+if __name__ == '__main__':
+ unittest.main()
