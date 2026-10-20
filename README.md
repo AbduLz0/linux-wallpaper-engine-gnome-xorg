@@ -4,6 +4,24 @@ Animated wallpapers from the Steam Workshop running natively on **GNOME Shell wi
 
 ---
 
+## Changes in this fork
+
+Based on [Gabriel Dias’s GNOME/X11 launcher](https://github.com/berelels/linux-wallpaper-engine-gnome-xorg), with the original MIT license retained.
+
+- Remove the player window’s `above` state before setting `below`, both when applying and at login.
+- Pass the full selected Workshop directory to the backend so a second Steam installation cannot redirect wallpaper lookup.
+- Preserve the launch arguments with Bash escaping when generating the login script.
+
+### Browse and download community wallpapers
+
+Use [jagrat7/linux-wallpaper-engine](https://github.com/jagrat7/linux-wallpaper-engine) to browse the Steam Workshop and download wallpapers. Then open **Change Animated Wallpaper** to select your monitors and apply a downloaded item. The browser’s own Apply button is not changed by this fork.
+
+For Flatpak Steam, select `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` in the setup wizard. Select your installed backend executable or its launcher wrapper separately. This repository does not bundle the backend, Steam, proprietary assets, or Workshop downloads.
+
+### Verification
+
+The borderless-window workaround was visibly confirmed by the user on one monitor on Zorin OS 18.1, GNOME 46, X11, using a downloaded video wallpaper. The launcher supports monitor selection, but both-monitor playback and login restoration have not yet been visually verified in this setup. Removing `above` was included in the successful test; we did not isolate whether it was strictly necessary.
+
 ## Why this exists
 
 The `linux-wallpaperengine` project can render Wallpaper Engine scenes on Linux, but on GNOME + X11 the standard `--screen-root` mode doesn't work. GNOME Shell renders its own background layer on top of the X11 root window, completely covering the wallpaper.
@@ -39,7 +57,7 @@ Follow the build instructions in that repository before proceeding.
 
 ### System packages
 ```bash
-sudo apt install zenity xrandr xdotool wmctrl python3
+sudo apt install zenity x11-xserver-utils xdotool wmctrl python3
 ```
 
 ---
@@ -47,8 +65,8 @@ sudo apt install zenity xrandr xdotool wmctrl python3
 ## Installation
 
 ```bash
-git clone https://github.com/berelels/linux-wallpaper-engine-gnome-xorg
-cd linux-wallpaper-engine-gnome
+git clone https://github.com/AbduLz0/linux-wallpaper-engine-gnome-xorg
+cd linux-wallpaper-engine-gnome-xorg
 chmod +x install.sh
 ./install.sh
 ```
@@ -94,7 +112,7 @@ On GNOME + X11, the `--screen-root` flag draws on the X11 root window. However, 
 ### The solution
 Instead of `--screen-root`, we use `--window` with explicit geometry in the format `XxYxWxH`. This creates a normal application window positioned and sized to exactly cover each monitor.
 
-After launch, `wmctrl` pins each window with:
+After launch, `wmctrl` first removes `above` (the backend can start always on top), then pins each window with:
 ```
 below    → always behind all other windows
 sticky   → visible on all workspaces
@@ -127,7 +145,7 @@ Every time you apply a wallpaper, the script regenerates `~/.local/bin/start-wal
 
 - **Wayland is not supported.** This solution relies on `xrandr`, `xdotool`, and `wmctrl`, which don't work on Wayland. For Wayland, `linux-wallpaperengine` has experimental `--layer` support but requires a completely different approach.
 - **KDE Plasma** has its own native integration with `linux-wallpaperengine` and doesn't need this.
-- **Scene-type wallpapers only.** Video wallpapers (`.mp4`) can be played with the Hanabi GNOME extension instead.
+- **Wallpaper compatibility varies.** A Workshop video wallpaper was visibly confirmed on Zorin OS 18.1 / GNOME 46 / X11 with NVIDIA hardware decoding. This does not establish compatibility with every scene, video, or web wallpaper.
 - **Rendering glitches** may appear on some wallpapers due to incomplete shader support in `linux-wallpaperengine`. This is a limitation of the backend, not this script.
 
 ---
