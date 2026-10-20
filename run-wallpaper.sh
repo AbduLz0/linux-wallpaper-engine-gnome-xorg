@@ -30,11 +30,12 @@ if [ -z "$window" ]; then
   exit 1
 fi
 xprop -id "$window" -f _NET_WM_WINDOW_TYPE 32a -set _NET_WM_WINDOW_TYPE _NET_WM_WINDOW_TYPE_DESKTOP
-wmctrl -i -r "$window" -b remove,above
+wmctrl -i -r "$window" -b remove,above,below
 wmctrl -i -r "$window" -b remove,maximized_vert,maximized_horz
-wmctrl -i -r "$window" -b add,below,sticky
+wmctrl -i -r "$window" -b add,sticky
 wmctrl -i -r "$window" -b add,skip_taskbar,skip_pager
 wmctrl -i -r "$window" -t -1
 # GNOME can override the initial GLFW position; place it after it is mapped.
 wmctrl -i -r "$window" -e "0,$x,$y,$width,$height"
+python3 "$(dirname "$0")/gnome-backend.py" --lower-window "$window"
 wait "$player_pid"

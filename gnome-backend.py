@@ -35,23 +35,71 @@ def monitors():
     return found
 
 
+def lower_desktop(window):
+    """Request bottom stacking within GNOME's desktop layer."""
+    class Data(ctypes.Union):
+        _fields_ = [('bytes', ctypes.c_char * 20), ('longs', ctypes.c_long * 5)]
+    class Client(ctypes.Structure):
+        _fields_ = [('type', ctypes.c_int), ('serial', ctypes.c_ulong),
+                    ('send_event', ctypes.c_int), ('display', ctypes.c_void_p),
+                    ('window', ctypes.c_ulong), ('message_type', ctypes.c_ulong),
+                    ('format', ctypes.c_int), ('data', Data)]
+    class Event(ctypes.Union):
+        _fields_ = [('client', Client), ('pad', ctypes.c_long * 24)]
+    x11 = ctypes.CDLL('libX11.so.6')
+    signatures = [
+        ('XOpenDisplay', ctypes.c_void_p, [ctypes.c_char_p]),
+        ('XDefaultRootWindow', ctypes.c_ulong, [ctypes.c_void_p]),
+        ('XInternAtom', ctypes.c_ulong, [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]),
+        ('XSendEvent', ctypes.c_int, [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int,
+                                    ctypes.c_long, ctypes.POINTER(Event)]),
+        ('XSync', ctypes.c_int, [ctypes.c_void_p, ctypes.c_int]),
+        ('XCloseDisplay', ctypes.c_int, [ctypes.c_void_p]),
+    ]
+    for name, result, args in signatures:
+        function = getattr(x11, name)
+        function.restype, function.argtypes = result, args
+    display = x11.XOpenDisplay(None)
+    if not display:
+        raise RuntimeError('Cannot open X11 display to lower wallpaper')
+    try:
+        event = Event()
+        event.client.type = 33  # ClientMessage
+        event.client.display = display
+        event.client.window = int(window, 0)
+        event.client.message_type = x11.XInternAtom(display, b'_NET_RESTACK_WINDOW', 0)
+        event.client.format = 32
+        event.client.data.longs[0] = 2  # pager source
+        event.client.data.longs[1] = 0  # no sibling: bottom of the layer
+        event.client.data.longs[2] = 1  # Below
+        x11.XSendEvent(display, x11.XDefaultRootWindow(display), 0,
+                      (1 << 20) | (1 << 19), ctypes.byref(event))
+        x11.XSync(display, 0)
+    finally:
+        x11.XCloseDisplay(display)
+
+
 def pin(window, geometry):
     # GNOME constrains fullscreen-sized normal windows to their original monitor.
     # Desktop type permits exact placement and keeps them beneath normal apps.
     subprocess.run(['xprop', '-id', window, '-f', '_NET_WM_WINDOW_TYPE', '32a',
                     '-set', '_NET_WM_WINDOW_TYPE', '_NET_WM_WINDOW_TYPE_DESKTOP'], check=True)
     for args in [
-        ['-b', 'remove,above'],
+        ['-b', 'remove,above,below'],
         ['-b', 'remove,maximized_vert,maximized_horz'],
-        ['-b', 'add,below,sticky'],
+        ['-b', 'add,sticky'],
         ['-b', 'add,skip_taskbar,skip_pager'],
         ['-t', '-1'],
         ['-e', '0,' + ','.join(geometry)],
     ]:
         subprocess.run(['wmctrl', '-i', '-r', window, *args], check=True)
+    lower_desktop(window)
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == '--lower-window':
+        lower_desktop(sys.argv[2])
+        return
     if len(sys.argv) < 2:
         raise ValueError('Expected backend executable')
     backend, *original = sys.argv[1:]

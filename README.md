@@ -8,7 +8,7 @@ Animated wallpapers from the Steam Workshop running natively on **GNOME Shell wi
 
 Based on [Gabriel Dias’s GNOME/X11 launcher](https://github.com/berelels/linux-wallpaper-engine-gnome-xorg), with the original MIT license retained.
 
-- Remove the player window’s `above` state before setting `below`, both when applying and at login.
+- Use desktop-type windows, remove both `above` and `below` states, and explicitly lower them within the desktop layer so desktop icons remain visible and clickable.
 - Pass the full selected Workshop directory to the backend so a second Steam installation cannot redirect wallpaper lookup.
 - Preserve the launch arguments with Bash escaping when generating the login script.
 
@@ -20,7 +20,7 @@ For Flatpak Steam, select `~/.var/app/com.valvesoftware.Steam/.local/share/Steam
 
 ### Verification
 
-The user confirmed visible video playback on both monitors with normal applications above the wallpapers on Zorin OS 18.1 / GNOME 46 / X11. The Workshop browser reported 2/2 active with the adapter, and its Stop button removed both renderer processes and windows. Login restoration has not yet been tested by logging out.
+The user confirmed visible video playback on both monitors with normal applications above the wallpapers and desktop icons visible and clickable on Zorin OS 18.1 / GNOME 46 / X11. The Workshop browser reported 2/2 active with the adapter, and its Stop button removed both renderer processes and windows. Login restoration has not yet been tested by logging out.
 
 ## Optional Workshop-browser Apply integration
 
@@ -128,9 +128,8 @@ On GNOME + X11, the `--screen-root` flag draws on the X11 root window. However, 
 ### The solution
 Instead of `--screen-root`, we use `--window` with explicit geometry in the format `XxYxWxH`. This creates a normal application window positioned and sized to exactly cover each monitor.
 
-After a player window appears, `xprop` marks it as a desktop window. `wmctrl` then removes `above` (the backend can start always on top), then pins each window with:
+After a player window appears, `xprop` marks it as a desktop window. `wmctrl` removes both `above` and `below`: on the tested GNOME setup, combining desktop type with `below` placed wallpapers above the icon surfaces. An X11 restack request lowers the wallpaper within the desktop layer. The remaining flags are:
 ```
-below    → always behind all other windows
 sticky   → visible on all workspaces
 skip_taskbar + skip_pager → hidden from taskbar and overview
 ```
