@@ -16,7 +16,7 @@ Based on [Gabriel Dias’s GNOME/X11 launcher](https://github.com/berelels/linux
 
 Use [jagrat7/linux-wallpaper-engine](https://github.com/jagrat7/linux-wallpaper-engine) to browse the Steam Workshop and download wallpapers. Then open **Change Animated Wallpaper** to select your monitors and apply a downloaded item. The optional `gnome-backend.py` adapter also enables the browser’s own Apply/Stop buttons on GNOME X11; see below.
 
-For Flatpak Steam, select `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` in the setup wizard. Select your installed backend executable or its launcher wrapper separately. This repository does not bundle the backend, Steam, proprietary assets, or Workshop downloads.
+For Flatpak Steam, select `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` in the setup wizard. Select your installed backend executable or its launcher wrapper separately. The repository does not redistribute these binaries or assets. `run.sh` obtains the open-source components and Steam; Steam supplies your owned game assets and Workshop downloads.
 
 ### Verification
 
@@ -34,7 +34,7 @@ python3 gnome-backend.py /path/to/real/linux-wallpaperengine \
   --assets-dir /path/to/wallpaper_engine/assets --bg /path/to/workshop/item
 ```
 
-To connect a browser that finds `linux-wallpaperengine` on PATH, use a wrapper with that name which executes this adapter and passes the absolute path to the **real** backend. Do not point it back to itself. The adapter needs Python 3, xrandr, xprop, and wmctrl in the browser's execution environment. A Flatpak runtime may lack these even when they exist on the host; this repository does not automatically bundle runtime dependencies or change Flatpak permissions.
+To connect a browser that finds `linux-wallpaperengine` on PATH, use a wrapper with that name which executes this adapter and passes the absolute path to the **real** backend. Do not point it back to itself. The adapter needs Python 3, xrandr, xprop, and wmctrl in the browser's execution environment. A Flatpak runtime may lack these even when they exist on the host; `run.sh` bundles missing runtime dependencies for its supported setup without changing broad Flatpak permissions.
 
 Both launch paths mark windows as `_NET_WM_WINDOW_TYPE_DESKTOP` before positioning them. On the tested GNOME desktop, full-monitor normal windows ignored moves to the other monitor until their type was changed.
 
@@ -65,11 +65,11 @@ This approach, combined with a GUI for monitor selection and wallpaper propertie
 > ⚠️ Installing Wallpaper Engine with Proton is the most commonly missed step. Without it, the `assets/` folder does not exist and nothing will work.
 
 ### linux-wallpaperengine
-The open-source backend that renders the wallpapers. You need to compile it from source:
+The open-source backend that renders the wallpapers:
 
 👉 https://github.com/Almamu/linux-wallpaperengine
 
-Follow the build instructions in that repository before proceeding.
+`run.sh` builds this automatically on supported systems. Manual users can follow the upstream build instructions.
 
 ### System packages
 ```bash
@@ -78,21 +78,36 @@ sudo apt install zenity x11-xserver-utils x11-utils xdotool wmctrl python3
 
 ---
 
-## Installation
+## Complete setup (recommended)
+
+On **Zorin OS 18 / Ubuntu 24.04, GNOME on X11, x86_64**:
 
 ```bash
-git clone https://github.com/AbduLz0/linux-wallpaper-engine-gnome-xorg
+git clone https://github.com/AbduLz0/linux-wallpaper-engine-gnome-xorg.git
 cd linux-wallpaper-engine-gnome-xorg
-chmod +x install.sh
-./install.sh
+./run.sh
 ```
 
-The installer will:
-- Check and install missing dependencies
-- Copy the script to `~/.local/bin/`
-- Create an entry in your app menu
-- Configure autostart for login
-- Launch the setup wizard
+The single entry point installs system dependencies, installs Flatpak Steam if absent, downloads the pinned Workshop browser release with SHA-256 verification, builds the pinned renderer (including its submodules), bundles missing runtime libraries, connects browser Apply/Stop to the GNOME adapter, and installs app-menu entries. No manual compilation or path editing is needed on the supported configuration.
+
+**Account steps cannot be automated:** enter your system password for dependency installation, sign in to Steam, own Wallpaper Engine, and finish its Steam installation. If Steam does not offer Install, the setup dialog explains how to enable Proton. The script opens the Steam installation page and checks for the assets before declaring setup complete. It does not buy the game, collect credentials, or redistribute paid assets.
+
+Allow several GB of disk space and time for the first C++/CEF build. Downloads and build progress are cached, so rerun `./run.sh` after a failed or interrupted setup. Run `./run.sh --check` for a platform-only check without changes; `./run.sh --help` lists options. Use `BUILD_JOBS=4 ./run.sh` to change build concurrency (default 2).
+
+Then open **Linux Wallpaper Engine** from the applications menu, browse/download a Workshop wallpaper, and click **Apply**. **Stop** closes its renderers. The separate **Change Animated Wallpaper** menu entry remains available. Existing user settings are preserved except for the required assets path and backend execution/window mode; backups are saved before these updates. Close an already-running Workshop browser before running setup.
+
+### Installation scope and validation
+
+- The complete installer targets Ubuntu 24.04-based GNOME X11 systems only. Other distributions, Wayland, and ARM are not supported by `run.sh`.
+- It uses Flatpak Steam even if native Steam is installed. Existing native Steam assets are not copied; sign in/install in Flatpak Steam as necessary.
+- Renderer: commit `b016d7d1fdcf4e5fd2f9c9fa420a8aaa07fee02d`; browser: `v0.4.11`.
+- Software lives under `~/.var/app/com.valvesoftware.Steam/data/gnome-wallpaper-suite`; build cache and logs are under `~/.cache/gnome-wallpaper-setup` (or `$XDG_CACHE_HOME`).
+- Verification includes shell checks, automated configuration/library-discovery tests, and execution of the generated backend wrapper in both live Steam runtimes. A full clean-machine installation has **not yet been verified**.
+- Re-run setup if a future Steam runtime update introduces missing dependencies. No broad Flatpak permissions are granted automatically.
+
+### Launcher-only installation
+
+For advanced users with a browser, backend, and dependencies already installed, the older `./install.sh` installs only the standalone selector. It is not the complete installation path.
 
 ---
 
