@@ -224,3 +224,47 @@ Every time you apply a wallpaper, the script regenerates `~/.local/bin/start-wal
 ## License
 
 MIT
+
+## Wallpaper compatibility and position controls
+
+The GNOME adapter now resolves Workshop preset dependencies and passes their
+supported property values to the renderer. Missing dependencies report the item
+ID to download; downloaded Workshop files are never rewritten.
+
+Open **Wallpaper Position** from the app menu to adjust horizontal framing,
+vertical framing, and zoom independently for each monitor. Settings are saved in
+`~/.config/wallpaper-engine/positions.json` and apply live with the patched
+renderer described in `patches/README.md`. Zoom creates room to move an image
+that already exactly fills the display. Reset restores centered framing at 100%.
+The position dialog requires `python3-tk`.
+
+Shader warnings alone do not establish a rendering failure. Retest compatibility
+after changing the renderer; do not treat old scan results as current evidence.
+
+### Game pausing and recovery
+
+`game-wallpaper-pause.py` is the user service implementation used by this setup.
+It suspends the current renderer during Steam games, ignores Wallpaper Engine
+and Lossless Scaling as games, resumes playback afterward, and keeps runtime
+recovery records so a service crash cannot leave its suspended processes frozen.
+PID start times prevent recovery from signaling a reused PID. Standalone script
+backups should be kept before replacing an existing service installation.
+
+The adapter kills renderer children when its supervisor disappears, including
+while those children are suspended. Saved wallpapers restore per monitor;
+preview/compatibility windows and disconnected monitors no longer block other
+screens from restoring.
+
+The compatibility checker opens small test windows and records process status,
+rendered frames, frame changes, and diagnostics without changing browser ratings:
+
+```bash
+python3 check-wallpaper-compatibility.py \
+  --backend /path/to/patched/linux-wallpaperengine \
+  --assets /path/to/wallpaper_engine/assets \
+  --output /tmp/wallpaper-check
+```
+
+The installer also adds **Adjust wallpaper position** to the launcher's desktop
+context menu. Position settings affect framing inside the monitor; the desktop
+window remains fixed beneath icons.

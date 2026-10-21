@@ -43,6 +43,19 @@ class BrowserIntegrationTests(unittest.TestCase):
             self.assertIn('--silent',args)
             self.assertEqual(args[args.index('--assets-dir')+1],'/Steam Library/assets')
 
+    def test_restore_ignores_previews_and_only_skips_occupied_monitor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);renderer=root/'renderer';renderer.touch()
+            proc=root/'123';proc.mkdir();(proc/'exe').symlink_to(renderer)
+            active={'left':{'backgroundId':'/wallpaper'},'right':{'backgroundId':'/wallpaper'}}
+            bounds={'left':('0','0','1920','1080'),'right':('1920','0','1920','1080')}
+            def command(geometry):
+                (proc/'cmdline').write_bytes(b'\0'.join([str(renderer).encode(),b'--bg',b'/wallpaper',b'--window',geometry]))
+            command(b'100x100x640x360')
+            self.assertEqual(restore.active_screens(renderer,active,bounds,root),set())
+            command(b'0x0x1920x1080')
+            self.assertEqual(restore.active_screens(renderer,active,bounds,root),{'left'})
+
     def test_missing_wallpaper_is_not_restored(self):
         self.assertIsNone(restore.restore_args('/renderer','DP-0',{'backgroundId':'/missing-wallpaper-for-test'},{},'/adapter.py'))
 

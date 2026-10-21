@@ -21,6 +21,7 @@ from PIL import Image
 
 from capture_x11 import capture_window
 from integration_config import backend_path
+from wallpaper_content import resolve_background
 
 
 CONFIG_HOME = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config'))
@@ -103,7 +104,7 @@ def matching_windows(active, bounds, backend):
             actual_size = tuple(map(int, (width, height)))
             background = option(argv, '--bg')
             for screen, settings in active.items():
-                if (screen in bounds and background == settings['backgroundId']
+                if (screen in bounds and background == resolve_background(settings['backgroundId'])[0]
                         and geometry == bounds[screen] and actual_size == bounds[screen][2:]):
                     result[screen] = window
         except (OSError, ValueError, UnicodeError, RuntimeError):
@@ -194,6 +195,13 @@ def single_instance():
         yield
 
 
+def position_version():
+    try:
+        return (CONFIG_HOME / 'wallpaper-engine/positions.json').stat().st_mtime_ns
+    except FileNotFoundError:
+        return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--once', action='store_true', help='capture once instead of watching')
@@ -211,7 +219,8 @@ def main():
                 # A renderer may finish restarting after the state file write,
                 # including when reapplying the same item. Refresh its new frame.
                 signature = (version, tuple(sorted(bounds.items())), str(backend),
-                             tuple(sorted(windows.items())))
+                             tuple(sorted(windows.items())),
+                             position_version())
                 if signature != pending:
                     pending, changed = signature, time.monotonic()
 

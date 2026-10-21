@@ -54,7 +54,7 @@ def main():
     data = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share'))
     target = data / 'wallpaper-engine-gnome'
     target.mkdir(parents=True, exist_ok=True)
-    files = ['gnome-backend.py', 'capture_x11.py', 'integration_config.py', 'sync-overview-background.py', 'keep-desktop-icons.py', 'browser-launcher.py', 'restore-browser-wallpapers.py']
+    files = ['wallpaper-position.py', 'wallpaper_content.py', 'gnome-backend.py', 'capture_x11.py', 'integration_config.py', 'sync-overview-background.py', 'keep-desktop-icons.py', 'browser-launcher.py', 'restore-browser-wallpapers.py']
     for name in files:
         shutil.copy2(SOURCE / name, target / name)
     (target / 'bin').mkdir(exist_ok=True)
@@ -67,10 +67,13 @@ def main():
         shutil.copy2(config_path, config_path.with_suffix('.sh.before-browser-integration'))
     config_path.write_text(''.join(key + '=' + shlex.quote(value) + '\n' for key, value in config.items()))
     command = quote_exec(sys.executable) + ' ' + quote_exec(target / 'browser-launcher.py')
+    position_command = quote_exec(sys.executable) + ' ' + quote_exec(target / 'wallpaper-position.py')
     entry = desktop_entry('Linux Wallpaper Engine', command)
+    entry += 'Actions=Position;\n\n[Desktop Action Position]\nName=Adjust wallpaper position\nExec=' + position_command + '\n'
     applications = data / 'applications'
     applications.mkdir(parents=True, exist_ok=True)
     (applications / 'linux-wallpaper-engine.desktop').write_text(entry)
+    (applications / 'wallpaper-position.desktop').write_text(desktop_entry('Wallpaper Position', position_command))
     if not args.no_desktop_shortcut:
         try:
             desktop = Path(subprocess.check_output(['xdg-user-dir', 'DESKTOP'], text=True).strip())
