@@ -42,7 +42,7 @@ echo 'The first build can take a while and needs several GB of free space.'
 sudo -v
 sudo apt-get update
 sudo apt-get install -y build-essential cmake git curl ca-certificates unzip pkg-config \
-    python3 python3-venv flatpak zenity x11-xserver-utils x11-utils xdotool wmctrl \
+    python3 python3-venv python3-pil python3-tk libxcomposite1 flatpak zenity x11-xserver-utils x11-utils xdotool wmctrl \
     libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl-dev libglew-dev \
     freeglut3-dev libsdl2-dev liblz4-dev libavcodec-dev libavformat-dev libavutil-dev \
     libswscale-dev libxxf86vm-dev libglm-dev libglfw3-dev libmpv-dev mpv libpulse-dev \
@@ -63,13 +63,19 @@ if [[ ! -d $SOURCE/.git ]]; then
     git clone --no-checkout https://github.com/Almamu/linux-wallpaperengine.git "$SOURCE"
 fi
 git -C "$SOURCE" checkout --detach "$BACKEND_REV"
+if git -C "$SOURCE" apply --check "$ROOT/patches/backend-fixes.patch" 2>/dev/null; then
+    git -C "$SOURCE" apply "$ROOT/patches/backend-fixes.patch"
+elif ! git -C "$SOURCE" apply --reverse --check "$ROOT/patches/backend-fixes.patch" 2>/dev/null; then
+    echo 'Backend checkout has incompatible changes; preserve it and use a fresh setup cache.' >&2
+    exit 1
+fi
 git -C "$SOURCE" submodule update --init --recursive
 cmake -S "$SOURCE" -B "$SOURCE/build" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
 cmake --build "$SOURCE/build" --parallel "${BUILD_JOBS:-2}"
 STAGE=$(mktemp -d "$CACHE/browser.XXXXXX")
 unzip -q "$ZIP" -d "$STAGE"
 # Keep versioned installs so repeating setup cannot overwrite a running executable.
-BROWSER="$APP/browser-$BROWSER_VERSION"
+BROWSER="$APP/browser-$BROWSER_VERSION-session-v1"
 if [[ ! -f $BROWSER/.installed ]]; then
     mkdir -p "$BROWSER"
     cp -a "$STAGE/Linux Wallpaper Engine-linux-x64/." "$BROWSER/"
@@ -77,15 +83,16 @@ if [[ ! -f $BROWSER/.installed ]]; then
     touch "$BROWSER/.installed"
 fi
 rm -rf -- "$STAGE"
-PLAYER="$APP/player-$BACKEND_REV"
+PATCH_ID=$(sha256sum "$ROOT/patches/backend-fixes.patch" | cut -c1-12)
+PLAYER="$APP/player-$BACKEND_REV-$PATCH_ID"
 if [[ ! -f $PLAYER/.installed ]]; then
     mkdir -p "$PLAYER"
     cp -a "$SOURCE/build/output/." "$PLAYER/"
     cp "$SOURCE/LICENSE" "$PLAYER/LICENSE.backend"
     touch "$PLAYER/.installed"
 fi
-python3 "$ROOT/setup/configure.py" "$ROOT" "$APP" "$PLAYER" "$BROWSER"
+python3 "$ROOT/setup/configure-native.py" "$ROOT" "$APP" "$PLAYER" "$BROWSER"
 echo 'Starting Steam. Sign in if Steam asks you to.'
-python3 "$APP/launch-browser.py" --setup-runtime
+flatpak run com.valvesoftware.Steam >/dev/null 2>&1 9>&- &
 printf '\nSetup complete. Open “Linux Wallpaper Engine” from your applications menu.\nLog: %s\n' "$LOG"
 "$APP/open-browser" >/dev/null 2>&1 9>&- &

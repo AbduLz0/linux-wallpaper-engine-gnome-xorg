@@ -11,14 +11,17 @@ import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
+from wallpaper_content import prepare_arguments
 
 
 def renderer_lifetime():
     # The browser uses SIGKILL on Stop. Linux must also terminate its renderer
     # children when this supervisor disappears (SIGKILL cannot be trapped).
+    # SIGTERM cannot terminate a renderer suspended by the game-pause service.
     parent = os.getppid()
     libc = ctypes.CDLL(None, use_errno=True)
-    if libc.prctl(1, signal.SIGTERM, 0, 0, 0) != 0:
+    if libc.prctl(1, signal.SIGKILL, 0, 0, 0) != 0:
         raise OSError(ctypes.get_errno(), 'prctl(PR_SET_PDEATHSIG) failed')
     if parent == 1 or os.getppid() != parent:
         os._exit(1)
@@ -28,10 +31,10 @@ def monitors():
     output = subprocess.check_output(['xrandr', '--query'], text=True)
     found = {}
     for line in output.splitlines():
-        match = re.match(r'(\S+) connected (?:primary )?(\d+)x(\d+)\+(\d+)\+(\d+)', line)
+        match = re.match(r'(\S+) connected (?:primary )?(\d+)x(\d+)([+-]\d+)([+-]\d+)', line)
         if match:
             name, w, h, x, y = match.groups()
-            found[name] = (x, y, w, h)
+            found[name] = (str(int(x)), str(int(y)), w, h)
     return found
 
 
@@ -102,7 +105,10 @@ def main():
         return
     if len(sys.argv) < 2:
         raise ValueError('Expected backend executable')
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["OMP_NUM_THREADS"] = "1"
     backend, *original = sys.argv[1:]
+    original = prepare_arguments(original)
     screens, args = [], []
     i = 0
     while i < len(original):
@@ -117,9 +123,12 @@ def main():
     if not screens:
         os.execv(backend, [backend, *original])
     available = monitors()
-    for name in screens:
-        if name not in available:
-            raise ValueError(f'Monitor {name!r} is not active')
+    inactive = [name for name in screens if name not in available]
+    screens = [name for name in screens if name in available]
+    for name in inactive:
+        print(f'Monitor {name!r} is not active; retaining the saved selection', file=sys.stderr)
+    if not screens:
+        raise ValueError('None of the selected monitors is active')
     children = []
     def terminate(signum, frame):
         raise SystemExit(128 + signum)
@@ -128,9 +137,11 @@ def main():
     try:
         for name in dict.fromkeys(screens):
             geometry = available[name]
+            environment = dict(os.environ, WE_POSITION_MONITOR=name,
+                WE_POSITION_FILE=str(Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "wallpaper-engine/positions.json"))
             child = subprocess.Popen(
                 [backend, '--window', 'x'.join(geometry), *args],
-                preexec_fn=renderer_lifetime)
+                preexec_fn=renderer_lifetime, env=environment)
             children.append(child)
             deadline = time.monotonic() + 60
             while True:

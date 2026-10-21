@@ -1,12 +1,10 @@
-# Animated wallpapers for Linux
+# Linux Wallpaper Engine for GNOME
 
-**Browse the Steam Workshop. Pick a wallpaper. Make your desktop yours.**
+Browse Steam Workshop wallpapers and use them on your Linux desktop, with support for multiple monitors and clickable desktop icons.
 
-Bring Wallpaper Engine community wallpapers to GNOME, with support for two monitors and desktop icons that stay visible and clickable.
+**For Zorin 18 / Ubuntu 24.04, GNOME on X11, x86_64.** You need to own Wallpaper Engine and install it through Steam. Wallpaper compatibility varies; Wayland is not supported.
 
 ## Get started
-
-**You’ll need:** Zorin OS 18 or Ubuntu 24.04, a GNOME **X11** session, an Intel/AMD 64-bit computer, and a copy of Wallpaper Engine on Steam.
 
 ```bash
 git clone https://github.com/AbduLz0/linux-wallpaper-engine-gnome-xorg.git
@@ -14,28 +12,24 @@ cd linux-wallpaper-engine-gnome-xorg
 ./run.sh
 ```
 
-The installer sets up the browser, wallpaper engine, dependencies, and desktop integration. Follow the prompts for your system password, Steam sign-in, and Wallpaper Engine installation.
+Setup installs dependencies, downloads the browser, builds the patched renderer, and adds **Linux Wallpaper Engine** to your app menu. The first build takes time and needs internet, several GB of disk space, and your sudo password.
 
-The first setup downloads and builds the engine, so allow some time and several GB of free space. It uses **Flatpak Steam**, which it installs if needed.
+Sign into Steam, install Wallpaper Engine (enable Proton if Steam asks), then select your Steam folder in the browser. Keep Steam running to browse and download Workshop wallpapers.
 
-## Pick your wallpaper
+## Everyday use
 
-1. Open **Linux Wallpaper Engine** from your applications menu.
-2. Browse **Workshop** and download a wallpaper you like.
-3. Select your displays and click **Apply**.
+- Choose a wallpaper and click **Apply** for your selected display.
+- Close with **X** to hide the browser while your wallpaper continues playing.
+- Open **Linux Wallpaper Engine** again to return to the same session, without duplicate wallpaper or audio.
+- Use the tray menu's **Quit** to exit, or **Stop** in the browser to stop a wallpaper.
+- Use **Wallpaper Position** to adjust framing and zoom for each monitor.
 
-Want your normal background back? Click **Stop**.
+Already installed? Close the browser using **Quit**, update your checkout, and rerun `./run.sh`. For a separately installed native browser, see [manual integration and session patch](docs/SESSION.md).
 
-## A few things to know
+## Credits and details
 
-- **X11 only** — Wayland isn’t supported by this setup.
-- Wallpaper compatibility varies; some community wallpapers may not render correctly.
-- Playback on both monitors, desktop icons, and Stop have been verified on Zorin 18.1. The installer has passed automated and runtime checks; a full fresh-machine install is still awaiting verification.
+This release integrates [zadwen’s improvements](https://github.com/zadwen/linux-wallpaper-engine-gnome-xorg) with their commit history, building on [Gabriel Dias / berelels](https://github.com/berelels/linux-wallpaper-engine-gnome-xorg). The browser is by [jagrat7](https://github.com/jagrat7/linux-wallpaper-engine); the renderer is by [Almamu](https://github.com/Almamu/linux-wallpaperengine). Original licenses and attribution are retained.
 
-Need help? See the [setup & troubleshooting guide](docs/SETUP.md) or [report an issue](https://github.com/AbduLz0/linux-wallpaper-engine-gnome-xorg/issues).
+[Integration details](docs/INTEGRATION.md) · [Renderer patch](patches/README.md) · [Compatibility](COMPATIBILITY.md)
 
-## Built on community work
-
-This fork connects and improves [Gabriel Dias’s GNOME launcher](https://github.com/berelels/linux-wallpaper-engine-gnome-xorg), [Almamu’s rendering engine](https://github.com/Almamu/linux-wallpaperengine), and [jagrat7’s Workshop browser](https://github.com/jagrat7/linux-wallpaper-engine).
-
-[MIT license](LICENSE) · An unofficial community project.
+Tested live on Zorin OS 18.1 / GNOME 46 / X11. The session fix was checked through three close/reopen cycles, rapid double launch, and a legacy shortcut, preserving the same browser and renderer processes. A fresh end-to-end installation and reboot have not been retested for this release.
