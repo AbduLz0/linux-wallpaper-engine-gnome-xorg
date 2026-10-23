@@ -19,6 +19,7 @@ import time
 
 from PIL import Image
 
+from background_state import restore_original, save_original
 from capture_x11 import capture_window
 from integration_config import backend_path
 from wallpaper_content import resolve_background
@@ -147,6 +148,7 @@ def publish(canvas, output=OUTPUT, still_current=lambda: True):
         canvas.save(temp, compress_level=2)
         if not still_current():
             return False
+        save_original(output=output)
         temp.replace(target)
     finally:
         temp.unlink(missing_ok=True)
@@ -160,8 +162,11 @@ def publish(canvas, output=OUTPUT, still_current=lambda: True):
 
 def update(active, bounds, backend, still_current=lambda: True, output=OUTPUT):
     screens = {name: settings for name, settings in active.items() if name in bounds}
-    if not screens:
-        return False  # Keep the last still image when live playback is stopped.
+    if set(screens) != set(bounds):
+        # Empty playback and partial-monitor selections both use the user's
+        # original GNOME background instead of a black composite region.
+        restore_original()
+        return True
     windows = matching_windows(screens, bounds, backend)
     if set(windows) != set(screens):
         return False  # Never publish a half-updated multi-monitor selection.

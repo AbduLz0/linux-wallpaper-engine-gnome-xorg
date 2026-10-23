@@ -54,9 +54,14 @@ def main():
     data = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share'))
     target = data / 'wallpaper-engine-gnome'
     target.mkdir(parents=True, exist_ok=True)
-    files = ['wallpaper-position.py', 'wallpaper_content.py', 'gnome-backend.py', 'capture_x11.py', 'integration_config.py', 'sync-overview-background.py', 'keep-desktop-icons.py', 'browser-launcher.py', 'restore-browser-wallpapers.py']
+    files = ['wallpaper-position.py', 'wallpaper_content.py', 'gnome-backend.py',
+             'capture_x11.py', 'integration_config.py', 'background_state.py',
+             'sync-overview-background.py', 'keep-desktop-icons.py',
+             'browser-launcher.py', 'restore-browser-wallpapers.py',
+             'uninstall-browser-integration.py']
     for name in files:
         shutil.copy2(SOURCE / name, target / name)
+    (target / 'uninstall-browser-integration.py').chmod(0o755)
     (target / 'bin').mkdir(exist_ok=True)
     shutil.copy2(SOURCE / 'browser-bin/linux-wallpaperengine', target / 'bin/linux-wallpaperengine')
     (target / 'bin/linux-wallpaperengine').chmod(0o755)

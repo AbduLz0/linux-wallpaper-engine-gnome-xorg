@@ -25,6 +25,8 @@ class BrowserIntegrationTests(unittest.TestCase):
             install=home/'.local/share/wallpaper-engine-gnome'
             self.assertTrue((install/'bin/linux-wallpaperengine').is_file())
             self.assertTrue((install/'capture_x11.py').is_file())
+            self.assertTrue((install/'background_state.py').is_file())
+            self.assertTrue(os.access(install/'uninstall-browser-integration.py', os.X_OK))
             self.assertIn('"', (home/'.local/share/applications/linux-wallpaper-engine.desktop').read_text())
             self.assertIn('Hidden=true',legacy.read_text())
             self.assertTrue(legacy.with_suffix('.desktop.before-browser-integration').exists())

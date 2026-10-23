@@ -132,22 +132,26 @@ class OverviewTests(unittest.TestCase):
         self.assertFalse(changed)
         publish.assert_not_called()
 
-    def test_stopped_playback_does_not_capture_or_change_last_static_background(self):
+    def test_stopped_playback_restores_original_background(self):
         with patch.object(overview, 'capture_window') as capture, \
-                patch.object(overview, 'publish') as publish:
-            self.assertFalse(overview.update({}, self.bounds, '/renderer'))
+                patch.object(overview, 'publish') as publish, \
+                patch.object(overview, 'restore_original') as restore:
+            self.assertTrue(overview.update({}, self.bounds, '/renderer'))
             capture.assert_not_called()
             publish.assert_not_called()
+            restore.assert_called_once_with()
 
-    def test_disconnected_selection_is_ignored_and_unselected_monitor_is_blank(self):
+    def test_partial_monitor_selection_keeps_original_background(self):
         active = {'main': self.active['main'], 'unplugged': {'backgroundId': '/old'}}
-        with patch.object(overview, 'matching_windows', return_value={'main': '0x20'}) as matching, \
-                patch.object(overview, 'capture_window', side_effect=self.capture), \
-                patch.object(overview, 'monitors', return_value=self.bounds), \
-                patch.object(overview, 'publish') as publish:
+        with patch.object(overview, 'matching_windows') as matching, \
+                patch.object(overview, 'capture_window') as capture, \
+                patch.object(overview, 'publish') as publish, \
+                patch.object(overview, 'restore_original') as restore:
             self.assertTrue(overview.update(active, self.bounds, '/renderer'))
-            self.assertEqual(matching.call_args.args[0], {'main': self.active['main']})
-            self.assertEqual(publish.call_args.args[0].getpixel((0, 3)), (0, 0, 0))
+            matching.assert_not_called()
+            capture.assert_not_called()
+            publish.assert_not_called()
+            restore.assert_called_once_with()
 
     def test_state_mtime_detects_reapplying_same_selection(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -182,9 +186,11 @@ class OverviewTests(unittest.TestCase):
 
             with patch.object(overview.subprocess, 'check_output',
                               side_effect=lambda *a, **kw: repr(current) + '\n'), \
-                    patch.object(overview.subprocess, 'run', side_effect=settings_run) as run:
+                    patch.object(overview.subprocess, 'run', side_effect=settings_run) as run, \
+                    patch.object(overview, 'save_original') as save:
                 for _ in range(3):
                     overview.publish(Image.new('RGB', (2, 2), 'blue'), output)
+            self.assertEqual(save.call_count, 3)
             self.assertEqual(selected, [(output / f'overview-{slot}.png').as_uri()
                                         for slot in (0, 1, 0)])
             self.assertEqual(sum(call.args[0][-2] == 'picture-uri-dark'
